@@ -2,6 +2,12 @@
 
 pub use pallet::*;
 
+#[cfg(test)]
+mod mock;
+
+#[cfg(test)]
+mod tests;
+
 #[frame_support::pallet]
 pub mod pallet {
 	use frame_support::{
@@ -82,6 +88,10 @@ pub mod pallet {
 				None => 0u32.into(),
 			};
 
+			OwnerKitties::<T>::try_mutate(&who, |kitty_index_vec| {
+				kitty_index_vec.try_push(kitty_id.clone())
+			}).map_err(|_| Error::<T>::ExceedMaxOwnerKitties)?;
+
 			T::Currency::reserve(&who, T::KittyStake::get()).map_err(|_| Error::<T>::StakeNotEnough)?;
 
 			let dna= Self::random_value(&who); 
@@ -91,10 +101,6 @@ pub mod pallet {
 			KittyOwner::<T>::insert(kitty_id,&who); 
 
 			NextKittyId::<T>::put(kitty_id + 1u32.into());
-
-			OwnerKitties::<T>::try_mutate(&who, |kitty_index_vec| {
-				kitty_index_vec.try_push(kitty_id.clone())
-			}).map_err(|_| Error::<T>::ExceedMaxOwnerKitties)?;
 
 			Self::deposit_event(Event::KittyCreated(who,kitty_id, kitty));
 			Ok(())
@@ -106,8 +112,6 @@ pub mod pallet {
 
 			ensure!(kitty_id_1 != kitty_id_2, Error::<T>::SameId);
 
-			T::Currency::reserve(&who, T::KittyStake::get()).map_err(|_| Error::<T>::StakeNotEnough)?;
-
 			let kitty_1 =Self::get_kitty(kitty_id_1).map_err(|_| Error::<T>::InvalidId)?; 
 			let kitty_2 = Self::get_kitty(kitty_id_2).map_err(|_| Error::<T>::InvalidId)?;
 
@@ -118,6 +122,12 @@ pub mod pallet {
 				}
 				None => 0u32.into(),
 			};
+
+			OwnerKitties::<T>::try_mutate(&who, |kitty_index_vec| {
+				kitty_index_vec.try_push(kitty_id.clone())
+			}).map_err(|_| Error::<T>::ExceedMaxOwnerKitties)?;
+
+			T::Currency::reserve(&who, T::KittyStake::get()).map_err(|_| Error::<T>::StakeNotEnough)?;
 			
 			let selector=Self::random_value(&who);
 			let mut data =[0u8; 16];
@@ -129,10 +139,6 @@ pub mod pallet {
 			<Kitties<T>>::insert(kitty_id, &new_kitty);
 			KittyOwner::<T>::insert(kitty_id,&who); 
 			NextKittyId::<T>::put(kitty_id + 1u32.into());
-
-			OwnerKitties::<T>::try_mutate(&who, |kitty_index_vec| {
-				kitty_index_vec.try_push(kitty_id.clone())
-			}).map_err(|_| Error::<T>::ExceedMaxOwnerKitties)?;
 
 			Self::deposit_event(Event::KittyBred(who, kitty_id, new_kitty));
 			Ok(())
@@ -153,15 +159,15 @@ pub mod pallet {
 				Err(())
 			}).map_err(|_| <Error<T>>::NotOwner)?;
 
+			OwnerKitties::<T>::try_mutate(&new_owner, |kitty_index_vec| {
+				kitty_index_vec.try_push(kitty_id.clone())
+			}).map_err(|_| Error::<T>::ExceedMaxOwnerKitties)?;
+
 			T::Currency::reserve(&new_owner, T::KittyStake::get()).map_err(|_| Error::<T>::StakeNotEnough)?;
 
 			<KittyOwner<T>>::insert(kitty_id, &new_owner);
 
 			T::Currency::unreserve(&who, T::KittyStake::get());
-
-			OwnerKitties::<T>::try_mutate(&new_owner, |kitty_index_vec| {
-				kitty_index_vec.try_push(kitty_id.clone())
-			}).map_err(|_| Error::<T>::ExceedMaxOwnerKitties)?;
 
 			Self::deposit_event(Event::KittyTransferred(who, new_owner, kitty_id));
 			Ok(())
